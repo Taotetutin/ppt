@@ -1,0 +1,229 @@
+import React, { useState } from 'react';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { AlertCircle, Info } from 'lucide-react';
+
+const QUiPPv2App = () => {
+  const [gestationalWeeks, setGestationalWeeks] = useState('');
+  const [gestationalDays, setGestationalDays] = useState('');
+  const [uterineDynamics, setUterineDynamics] = useState('');
+  const [priorPreterm, setPriorPreterm] = useState('');
+  const [cervicalLength, setCervicalLength] = useState('');
+  const [membraneRupture, setMembraneRupture] = useState('');
+  const [fetalNumber, setFetalNumber] = useState('');
+  const [cervicalSurgery, setCervicalSurgery] = useState('');
+  const [results, setResults] = useState(null);
+
+  const calculateRisk = () => {
+    const gestAge = parseFloat(gestationalWeeks) + parseFloat(gestationalDays) / 7;
+    const cervLength = parseFloat(cervicalLength);
+    const fetuses = parseInt(fetalNumber);
+
+    let riskFactor = 1;
+
+    if (gestAge < 24) riskFactor *= 1.5;
+    else if (gestAge < 28) riskFactor *= 1.3;
+    else if (gestAge < 32) riskFactor *= 1.2;
+
+    if (cervLength < 15) riskFactor *= 2;
+    else if (cervLength < 25) riskFactor *= 1.5;
+
+    if (uterineDynamics === 'yes') riskFactor *= 1.3;
+    if (priorPreterm === 'yes') riskFactor *= 1.5;
+    if (membraneRupture === 'yes') riskFactor *= 1.8;
+    if (fetuses > 1) riskFactor *= 1.5;
+    if (cervicalSurgery === 'yes') riskFactor *= 1.2;
+
+    const baseRisk = 0.01;
+    const riskOneWeek = Math.min(baseRisk * riskFactor * 2, 1) * 100;
+    const riskTwoWeeks = Math.min(baseRisk * riskFactor * 3, 1) * 100;
+    const riskFourWeeks = Math.min(baseRisk * riskFactor * 4, 1) * 100;
+
+    setResults({
+      oneWeek: riskOneWeek.toFixed(1),
+      twoWeeks: riskTwoWeeks.toFixed(1),
+      fourWeeks: riskFourWeeks.toFixed(1)
+    });
+  };
+
+  const getRecommendations = (results, gestationalWeeks) => {
+    const gestAge = parseFloat(gestationalWeeks);
+    const riskOneWeek = parseFloat(results.oneWeek);
+    const riskTwoWeeks = parseFloat(results.twoWeeks);
+    const riskFourWeeks = parseFloat(results.fourWeeks);
+
+    let recommendations = [];
+
+    if (riskOneWeek >= 5) {
+      recommendations.push("Riesgo elevado de parto prematuro inminente.");
+      
+      if (gestAge < 34) {
+        recommendations.push("Considerar la administración de corticosteroides antenatales. Los beneficios son más significativos si el parto ocurre entre 24 horas y 7 días después de la administración.");
+      }
+      
+      if (gestAge < 30) {
+        recommendations.push("Evaluar la administración de sulfato de magnesio para neuroprotección fetal.");
+      }
+      
+      if (gestAge < 32) {
+        recommendations.push("Considerar la transferencia in utero a un centro de atención terciaria si no se encuentra en uno.");
+      }
+      
+      if (gestAge >= 24 && gestAge < 34) {
+        recommendations.push("Evaluar el uso de tocolíticos para retrasar el parto por 48 horas, permitiendo la administración completa de corticosteroides y/o la transferencia in utero si es necesario.");
+      }
+    } else if (riskTwoWeeks >= 10 || riskFourWeeks >= 15) {
+      recommendations.push("Riesgo moderado de parto prematuro.");
+      recommendations.push("Considerar un seguimiento más frecuente, incluyendo mediciones seriadas de longitud cervical si está disponible.");
+      
+      if (gestAge < 34) {
+        recommendations.push("Estar preparado para la posible necesidad de intervenciones para el parto prematuro en las próximas semanas.");
+      }
+    } else {
+      recommendations.push("Riesgo bajo de parto prematuro inmediato.");
+      recommendations.push("Continuar con el control prenatal habitual, pero estar atento a los signos y síntomas de parto prematuro.");
+    }
+
+    return recommendations;
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center p-4">
+      <Card className="w-full max-w-md bg-white bg-opacity-90 backdrop-blur-md shadow-xl rounded-xl overflow-hidden transform perspective-1000 rotateY-3 hover:scale-105 transition-all duration-300">
+        <CardHeader className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-6 text-center text-2xl font-bold">
+          Predicción de Parto Prematuro QUiPP v2
+        </CardHeader>
+        <CardContent className="p-6 space-y-6">
+          <div>
+            <Label className="block mb-2 font-semibold">¿Cuál es la edad gestacional actual?</Label>
+            <div className="flex space-x-2">
+              <Input
+                type="number"
+                placeholder="Semanas"
+                value={gestationalWeeks}
+                onChange={(e) => setGestationalWeeks(e.target.value)}
+                className="w-1/2 p-2 border rounded"
+              />
+              <Input
+                type="number"
+                placeholder="Días"
+                value={gestationalDays}
+                onChange={(e) => setGestationalDays(e.target.value)}
+                className="w-1/2 p-2 border rounded"
+              />
+            </div>
+          </div>
+          
+          <div>
+            <Label className="block mb-2 font-semibold">¿Hay presencia de dinámica uterina?</Label>
+            <Select onValueChange={setUterineDynamics} value={uterineDynamics}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Seleccionar" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="yes">Sí</SelectItem>
+                <SelectItem value="no">No</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label className="block mb-2 font-semibold">¿Existe antecedente de parto prematuro espontáneo menor a 36 semanas?</Label>
+            <Select onValueChange={setPriorPreterm} value={priorPreterm}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Seleccionar" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="yes">Sí</SelectItem>
+                <SelectItem value="no">No</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label className="block mb-2 font-semibold">¿Cuál es la longitud cervical (cervicometría)?</Label>
+            <Input
+              type="number"
+              placeholder="Longitud en mm"
+              value={cervicalLength}
+              onChange={(e) => setCervicalLength(e.target.value)}
+              className="w-full p-2 border rounded"
+            />
+          </div>
+
+          <div>
+            <Label className="block mb-2 font-semibold">¿Hay antecedente de rotura de membranas?</Label>
+            <Select onValueChange={setMembraneRupture} value={membraneRupture}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Seleccionar" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="yes">Sí</SelectItem>
+                <SelectItem value="no">No</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label className="block mb-2 font-semibold">¿Cuál es el número de fetos?</Label>
+            <Input
+              type="number"
+              placeholder="Número de fetos"
+              value={fetalNumber}
+              onChange={(e) => setFetalNumber(e.target.value)}
+              className="w-full p-2 border rounded"
+            />
+          </div>
+
+          <div>
+            <Label className="block mb-2 font-semibold">¿Existe antecedente de cirugía cervical (conización)?</Label>
+            <Select onValueChange={setCervicalSurgery} value={cervicalSurgery}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Seleccionar" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="yes">Sí</SelectItem>
+                <SelectItem value="no">No</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <Button
+            onClick={calculateRisk}
+            className="w-full bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700 text-white font-bold py-2 px-4 rounded transition-all duration-300 transform hover:scale-105"
+          >
+            Calcular Riesgo
+          </Button>
+
+          {results && (
+            <div className="mt-4 p-4 bg-indigo-100 border-l-4 border-indigo-500 text-indigo-700">
+              <p className="font-bold flex items-center"><Info className="mr-2" />Riesgo de parto prematuro:</p>
+              <ul className="list-disc list-inside mt-2">
+                <li>A 1 semana: {results.oneWeek}%</li>
+                <li>A 2 semanas: {results.twoWeeks}%</li>
+                <li>A 4 semanas: {results.fourWeeks}%</li>
+              </ul>
+              <div className="mt-4">
+                <p className="font-semibold">Interpretación y recomendaciones:</p>
+                <ul className="list-disc list-inside mt-2">
+                  {getRecommendations(results, gestationalWeeks).map((rec, index) => (
+                    <li key={index}>{rec}</li>
+                  ))}
+                </ul>
+              </div>
+              <p className="mt-4 text-sm italic flex items-center">
+                <AlertCircle className="mr-2" />
+                Esta interpretación es una guía basada en la evidencia actual. La decisión final sobre el manejo debe ser tomada por un profesional de la salud considerando todos los factores clínicos relevantes.
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+export default QUiPPv2App;
